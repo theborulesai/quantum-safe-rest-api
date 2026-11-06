@@ -1,0 +1,251 @@
+### Quantum-Safe REST API — Example Requests
+### Use with VS Code REST Client extension or convert to curl
+### Base URL: http://localhost:8000
+
+@base_url = http://localhost:8000
+@token = PUT_TOKEN_HERE
+
+# ============================================================
+# 1. HEALTH CHECK
+# ============================================================
+
+### GET /  — API root health check
+GET {{base_url}}/
+Accept: application/json
+
+###
+
+# ============================================================
+# 2. AUTHENTICATION
+# ============================================================
+
+### POST /api/register — Register a new user
+POST {{base_url}}/api/register
+Content-Type: application/json
+
+{
+  "username": "alice",
+  "email": "alice@example.com",
+  "password": "alice_secure_pass123"
+}
+
+###
+
+### POST /api/register — Register second user
+POST {{base_url}}/api/register
+Content-Type: application/json
+
+{
+  "username": "bob",
+  "email": "bob@example.com",
+  "password": "bob_secure_pass123"
+}
+
+###
+
+### POST /api/login — Login and get JWT token
+# Copy the access_token from the response and set @token above
+POST {{base_url}}/api/login
+Content-Type: application/json
+
+{
+  "username": "alice",
+  "password": "alice_secure_pass123"
+}
+
+###
+
+### GET /api/me — Get current user info (requires auth)
+GET {{base_url}}/api/me
+Authorization: Bearer {{token}}
+
+###
+
+# ============================================================
+# 3. KEY MANAGEMENT
+# ============================================================
+
+### POST /api/keys/generate — Generate ML-KEM-768 + ML-DSA-65 key pairs
+POST {{base_url}}/api/keys/generate
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "algorithm": "both"
+}
+
+###
+
+### POST /api/keys/generate — Generate only KEM keys
+POST {{base_url}}/api/keys/generate
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "algorithm": "kem"
+}
+
+###
+
+### GET /api/keys/public — Get a user's public keys (no auth needed)
+GET {{base_url}}/api/keys/public?username=alice
+Accept: application/json
+
+###
+
+# ============================================================
+# 4. KEY ENCAPSULATION MECHANISM (ML-KEM-768)
+# ============================================================
+
+### POST /api/kem/encapsulate — Alice encapsulates using Bob's public key
+### Returns ciphertext + shared_secret_hash (never transmits the secret itself)
+POST {{base_url}}/api/kem/encapsulate
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "recipient_username": "bob"
+}
+
+###
+
+### POST /api/kem/decapsulate — Bob decapsulates with his private key
+### Replace kem_ciphertext with the value from /api/kem/encapsulate response
+POST {{base_url}}/api/kem/decapsulate
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kem_ciphertext": "BASE64_CIPHERTEXT_FROM_ENCAPSULATE"
+}
+
+###
+
+# ============================================================
+# 5. ENCRYPTION / DECRYPTION (AES-256-GCM)
+# ============================================================
+
+### POST /api/encrypt — Encrypt a plaintext message for a recipient
+POST {{base_url}}/api/encrypt
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "plaintext": "This is a quantum-safe encrypted message!",
+  "recipient_username": "bob"
+}
+
+###
+
+### POST /api/decrypt — Decrypt a ciphertext
+### Replace field values with the response from /api/encrypt
+POST {{base_url}}/api/decrypt
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "ciphertext": "BASE64_CIPHERTEXT",
+  "nonce": "BASE64_NONCE",
+  "kem_ciphertext": "BASE64_KEM_CIPHERTEXT"
+}
+
+###
+
+# ============================================================
+# 6. DIGITAL SIGNATURES (ML-DSA-65)
+# ============================================================
+
+### POST /api/sign — Sign a message with ML-DSA-65
+POST {{base_url}}/api/sign
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "message": "I authorize this transaction. —Alice"
+}
+
+###
+
+### POST /api/verify — Verify a digital signature (no auth needed)
+### Replace signature with value from /api/sign response
+POST {{base_url}}/api/verify
+Content-Type: application/json
+
+{
+  "signer_username": "alice",
+  "message": "I authorize this transaction. —Alice",
+  "signature": "BASE64_SIGNATURE"
+}
+
+###
+
+### POST /api/verify — Demonstrate tamper detection (should return valid: false)
+POST {{base_url}}/api/verify
+Content-Type: application/json
+
+{
+  "signer_username": "alice",
+  "message": "I authorize this transaction. —Alice TAMPERED",
+  "signature": "BASE64_SIGNATURE"
+}
+
+###
+
+# ============================================================
+# 7. SECURE MESSAGING
+# ============================================================
+
+### POST /api/messages/send — Send an encrypted + signed message
+POST {{base_url}}/api/messages/send
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "recipient_username": "bob",
+  "plaintext": "Hello Bob! This message is quantum-safe encrypted and signed."
+}
+
+###
+
+### GET /api/messages — Get received messages (Bob's inbox)
+GET {{base_url}}/api/messages
+Authorization: Bearer {{token}}
+
+###
+
+### GET /api/messages/{id} — Read and decrypt a specific message
+### Replace 1 with actual message ID from /api/messages response
+GET {{base_url}}/api/messages/1
+Authorization: Bearer {{token}}
+
+###
+
+# ============================================================
+# 8. SECURITY & BENCHMARKING
+# ============================================================
+
+### GET /api/security/status — Get security configuration status
+GET {{base_url}}/api/security/status
+Accept: application/json
+
+###
+
+### GET /api/benchmark — Run PQC vs Classical crypto benchmark
+### WARNING: This takes 30-120 seconds due to pure-Python PQC
+GET {{base_url}}/api/benchmark
+Accept: application/json
+
+###
+
+### GET /api/logs — Get cryptographic operation audit logs (requires auth)
+GET {{base_url}}/api/logs
+Authorization: Bearer {{token}}
+
+###
+
+# ============================================================
+# SWAGGER UI
+# ============================================================
+# Interactive API documentation: http://localhost:8000/docs
+# ReDoc documentation:          http://localhost:8000/redoc
+
