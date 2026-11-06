@@ -1,0 +1,41 @@
+version: '3.9'
+
+services:
+  backend:
+    image: python:3.12-slim
+    container_name: quantum-safe-backend
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    command: >
+      sh -c "pip install -r requirements.txt --quiet &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./quantum_safe.db
+      - SECRET_KEY=quantum-safe-secret-key-change-in-production
+    networks:
+      - quantum-net
+
+  frontend:
+    image: node:20-alpine
+    container_name: quantum-safe-frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host"
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE=http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - quantum-net
+
+networks:
+  quantum-net:
+    driver: bridge
+
